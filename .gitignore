@@ -1,0 +1,16 @@
+# Environnement virtuel
+venv/
+.env
+__pycache__/
+*.pyc
+
+# Dossiers et fichiers de test/IDE
+*.log
+*.sqlite3
+.idea/
+.vscode/
+
+# Docker
+*.pid
+*.db
+*.sock
