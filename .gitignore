@@ -14,3 +14,5 @@ __pycache__/
 *.pid
 *.db
 *.sock
+
+dev_token.py
