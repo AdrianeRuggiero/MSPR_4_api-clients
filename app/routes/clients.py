@@ -14,7 +14,7 @@ router = APIRouter()
 def create(client: ClientModel, user=Depends(role_required("admin"))):
     return create_client(client)
 
-@router.get("/", response_model=List[ClientModel])
+@router.get("/", response_model=List[ClientModel], dependencies=[Depends(role_required("admin"))])
 def get_all(user=Depends(get_current_user)):
     return list_clients()
 
