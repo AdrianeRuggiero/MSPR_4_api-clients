@@ -3,6 +3,8 @@ from bson import ObjectId
 from datetime import timedelta
 from jose import jwt, JWTError
 import time
+import json
+from unittest.mock import patch, MagicMock
 
 from app.main import app
 from app.models.client import ClientModel
@@ -10,6 +12,7 @@ from app.security.auth import create_access_token
 from app.services.client_service import (
     create_client, get_client, list_clients, update_client, delete_client
 )
+from app.messaging.rabbitmq import publish_client_created, consume_client_created
 
 client = TestClient(app)
 
@@ -170,3 +173,93 @@ def test_update_client_no_change():
 def test_metrics_route():
     response = client.get("/metrics")
     assert response.status_code == 200
+
+# MESSAGING
+
+def test_publish_client_created():
+    mock_channel = MagicMock()
+    client_data = {"name": "Test", "email": "test@example.com"}
+
+    publish_client_created(client_data, channel=mock_channel)
+
+    mock_channel.basic_publish.assert_called_once()
+    args, kwargs = mock_channel.basic_publish.call_args
+    assert kwargs["routing_key"] == "client_created"
+    assert kwargs["body"] == '{"name": "Test", "email": "test@example.com"}'
+    assert kwargs["exchange"] == ""
+    assert kwargs["properties"].delivery_mode == 2
+    mock_channel.close.assert_called_once()
+
+def test_consume_client_created():
+    mock_callback = MagicMock()
+    mock_channel = MagicMock()
+
+    with patch("app.messaging.rabbitmq.get_channel", return_value=mock_channel):
+        consume_client_created(mock_callback)
+
+        mock_channel.basic_consume.assert_called_once()
+        mock_channel.start_consuming.assert_called_once()
+
+def test_publish_client_created_with_default_channel():
+    mock_channel = MagicMock()
+    with patch("app.messaging.rabbitmq.get_channel", return_value=mock_channel):
+        client_data = {"name": "AutoChannel", "email": "auto@example.com"}
+        publish_client_created(client_data)
+
+        mock_channel.basic_publish.assert_called_once()
+        mock_channel.close.assert_called_once()
+
+def test_consume_client_created_callback_wrapper():
+    mock_channel = MagicMock()
+    mock_callback = MagicMock()
+    mock_body = json.dumps({"name": "CallbackTest"}).encode()
+    mock_method = MagicMock()
+    mock_method.delivery_tag = "abc123"
+
+    with patch("app.messaging.rabbitmq.get_channel", return_value=mock_channel):
+        # Extraire la fonction wrapper (car start_consuming est bloquant)
+        consume_client_created(mock_callback)
+        args, kwargs = mock_channel.basic_consume.call_args
+        on_message_callback = kwargs["on_message_callback"]
+
+        # Simuler un appel au wrapper
+        on_message_callback(mock_channel, mock_method, None, mock_body)
+
+        mock_callback.assert_called_once_with({"name": "CallbackTest"})
+        mock_channel.basic_ack.assert_called_once_with(delivery_tag="abc123")
+
+def test_get_channel_creates_connection():
+    with patch("app.messaging.rabbitmq.pika.BlockingConnection") as mock_conn:
+        mock_channel = MagicMock()
+        mock_conn.return_value.channel.return_value = mock_channel
+
+        from app.messaging.rabbitmq import get_channel
+        channel = get_channel()
+
+        mock_conn.assert_called_once()
+        mock_channel.queue_declare.assert_called_once_with(queue='client_created', durable=True)
+        assert channel == mock_channel
+
+def test_consume_client_created_callback_wrapper():
+    from app.messaging.rabbitmq import consume_client_created
+
+    mock_channel = MagicMock()
+    mock_callback = MagicMock()
+    mock_body = json.dumps({"name": "Test"}).encode()
+
+    with patch("app.messaging.rabbitmq.get_channel", return_value=mock_channel):
+        # Simuler la fonction wrapper en récupérant l'argument passé à basic_consume
+        consume_client_created(mock_callback)
+
+        assert mock_channel.basic_consume.called
+        args, kwargs = mock_channel.basic_consume.call_args
+        wrapper_func = kwargs["on_message_callback"]
+
+        # Appel manuel de la fonction wrapper
+        mock_method = MagicMock()
+        mock_method.delivery_tag = "xyz"
+
+        wrapper_func(mock_channel, mock_method, None, mock_body)
+
+        mock_callback.assert_called_once_with({"name": "Test"})
+        mock_channel.basic_ack.assert_called_once_with(delivery_tag="xyz")
