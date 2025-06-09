@@ -1,0 +1,172 @@
+from fastapi.testclient import TestClient
+from bson import ObjectId
+from datetime import timedelta
+from jose import jwt, JWTError
+import time
+
+from app.main import app
+from app.models.client import ClientModel
+from app.security.auth import create_access_token
+from app.services.client_service import (
+    create_client, get_client, list_clients, update_client, delete_client
+)
+
+client = TestClient(app)
+
+def get_auth_headers(role="admin"):
+    token = create_access_token({"sub": "testuser", "role": role})
+    return {"Authorization": f"Bearer {token}"}
+
+# ROUTES
+
+def test_create_client():
+    payload = {
+        "name": "Test Client",
+        "email": "test@example.com",
+        "company": "TestCorp",
+        "phone": "+330000000",
+        "is_active": True
+    }
+    response = client.post("/clients/", json=payload, headers=get_auth_headers())
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "Test Client"
+
+def test_list_clients():
+    response = client.get("/clients/", headers=get_auth_headers())
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+def test_get_single_client():
+    payload = {
+        "name": "Client X",
+        "email": "clientx@example.com"
+    }
+    create_resp = client.post("/clients/", json=payload, headers=get_auth_headers())
+    client_id = create_resp.json()["_id"]
+
+    get_resp = client.get(f"/clients/{client_id}", headers=get_auth_headers())
+    assert get_resp.status_code == 200
+    assert get_resp.json()["email"] == "clientx@example.com"
+
+def test_update_client():
+    payload = {
+        "name": "Old Name",
+        "email": "update@example.com",
+        "company": "OldCorp",
+        "phone": "+33123456789",
+        "is_active": True
+    }
+    create_resp = client.post("/clients/", json=payload, headers=get_auth_headers())
+    client_id = create_resp.json()["_id"]
+
+    updated = {
+        "name": "New Name",
+        "email": "update@example.com",
+        "company": "NewCorp",
+        "phone": "+33999999999",
+        "is_active": False
+    }
+    update_resp = client.put(f"/clients/{client_id}", json=updated, headers=get_auth_headers())
+    assert update_resp.status_code == 200
+    assert update_resp.json()["name"] == "New Name"
+
+def test_delete_client():
+    payload = {"name": "Delete Me", "email": "delete@example.com"}
+    create_resp = client.post("/clients/", json=payload, headers=get_auth_headers())
+    client_id = create_resp.json()["_id"]
+
+    delete_resp = client.delete(f"/clients/{client_id}", headers=get_auth_headers())
+    assert delete_resp.status_code == 204
+
+    get_resp = client.get(f"/clients/{client_id}", headers=get_auth_headers())
+    assert get_resp.status_code == 404
+
+def test_unauthorized_access():
+    response = client.get("/clients/")
+    assert response.status_code == 401
+
+def test_forbidden_role():
+    token = create_access_token({"sub": "user", "role": "user"})
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.get("/clients/", headers=headers)
+    assert response.status_code == 403
+
+# SERVICES
+
+def test_get_client_direct():
+    payload = {
+        "name": "FromService",
+        "email": "service@example.com",
+        "company": "ServCorp",
+        "phone": "+33777777777",
+        "is_active": True
+    }
+    resp = client.post("/clients/", json=payload, headers=get_auth_headers())
+    client_id = resp.json()["_id"]
+
+    result = get_client(client_id)
+    assert result is not None
+    assert result.name == "FromService"
+
+def test_get_client_not_found():
+    fake_id = str(ObjectId())
+    result = get_client(fake_id)
+    assert result is None
+
+def test_update_client_not_found():
+    fake_id = str(ObjectId())
+    updated_data = ClientModel(name="DoesNotExist", email="fake@email.com")
+    result = update_client(fake_id, updated_data)
+    assert result is None
+
+def test_update_client_invalid_id():
+    invalid_id = "not-an-id"
+    updated_data = ClientModel(name="DoesNotExist", email="fake@email.com")
+    result = update_client(invalid_id, updated_data)
+    assert result is None
+
+def test_delete_client_not_found():
+    fake_id = str(ObjectId())
+    result = delete_client(fake_id)
+    assert result is False
+
+def test_delete_client_invalid_id():
+    invalid_id = "invalid-id"
+    result = delete_client(invalid_id)
+    assert result is False
+
+def test_create_client_direct():
+    client_data = ClientModel(
+        name="Unit Test",
+        email="unit@test.com",
+        company="UnitCo",
+        phone="+33123456789"
+    )
+    result = create_client(client_data)
+    assert isinstance(result, ClientModel)
+    assert result.email == "unit@test.com"
+
+# AUTRES
+
+def test_token_expiration():
+    short_token = create_access_token(data={"sub": "user"}, expires_delta=timedelta(seconds=1))
+    time.sleep(2)
+    try:
+        jwt.decode(short_token, "changeme", algorithms=["HS256"])
+        assert False, "Token should be expired"
+    except JWTError:
+        assert True
+
+def test_update_client_no_change():
+    payload = {"name": "SameName", "email": "same@example.com"}
+    create_resp = client.post("/clients/", json=payload, headers=get_auth_headers())
+    client_id = create_resp.json()["_id"]
+
+    updated_data = {"name": "SameName", "email": "same@example.com"}
+    update_resp = client.put(f"/clients/{client_id}", json=updated_data, headers=get_auth_headers())
+    assert update_resp.status_code == 200
+
+def test_metrics_route():
+    response = client.get("/metrics")
+    assert response.status_code == 200

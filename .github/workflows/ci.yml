@@ -1,0 +1,53 @@
+name: CI - Clients API
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      MONGO_URI: ${{ secrets.MONGO_URI }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Important pour Sonar
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pylint pytest pytest-cov
+
+    - name: Run pylint
+      run: |
+        pylint app/ --fail-under=8
+
+    - name: Run tests with coverage
+      run: |
+        pytest --cov=app --cov-report=xml
+      env:
+        PYTHONPATH: .
+
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@v5
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      with:
+        args: >
+          -Dsonar.projectKey=AdrianeRuggiero_MSPR_4_api-clients
+          -Dsonar.organization=adrianeruggiero
+          -Dsonar.sources=app
+          -Dsonar.tests=tests
+          -Dsonar.python.coverage.reportPaths=coverage.xml
+          -Dsonar.language=py
