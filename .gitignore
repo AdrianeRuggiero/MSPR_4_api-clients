@@ -16,3 +16,4 @@ __pycache__/
 *.sock
 
 dev_token.py
+.coverage
