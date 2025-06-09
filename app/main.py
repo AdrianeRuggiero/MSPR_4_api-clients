@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
-from app.routes import clients
+from app.routes import clients, token  # 🔹 Ajout du router 'token'
 
 app = FastAPI(
     title="Clients API",
@@ -18,5 +18,6 @@ def root():
     """Affiche un message de bienvenue."""
     return {"msg": "Bienvenue sur l'API Clients"}
 
-# Inclusions des routes clients
+# Inclusions des routes
+app.include_router(token.router)  # 🔹 Ajout du router /token
 app.include_router(clients.router, prefix="/clients", tags=["clients"])

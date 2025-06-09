@@ -161,6 +161,20 @@ def test_token_expiration():
     except JWTError:
         assert True
 
+def test_token_endpoint_admin():
+    response = client.post("/token", data={"username": "admin", "password": "any"})
+    assert response.status_code == 200
+    token = response.json().get("access_token")
+    assert token is not None
+    assert isinstance(token, str)
+
+def test_token_endpoint_user():
+    response = client.post("/token", data={"username": "randomuser", "password": "irrelevant"})
+    assert response.status_code == 200
+    token = response.json().get("access_token")
+    assert token is not None
+    assert isinstance(token, str)
+
 def test_update_client_no_change():
     payload = {"name": "SameName", "email": "same@example.com"}
     create_resp = client.post("/clients/", json=payload, headers=get_auth_headers())
@@ -263,3 +277,4 @@ def test_consume_client_created_callback_wrapper():
 
         mock_callback.assert_called_once_with({"name": "Test"})
         mock_channel.basic_ack.assert_called_once_with(delivery_tag="xyz")
+
