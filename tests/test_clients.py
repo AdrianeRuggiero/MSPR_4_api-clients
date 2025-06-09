@@ -3,6 +3,7 @@ from bson import ObjectId
 from datetime import timedelta
 from jose import jwt, JWTError
 import time
+from unittest.mock import patch, MagicMock
 
 from app.main import app
 from app.models.client import ClientModel
@@ -10,6 +11,7 @@ from app.security.auth import create_access_token
 from app.services.client_service import (
     create_client, get_client, list_clients, update_client, delete_client
 )
+from app.messaging.rabbitmq import publish_client_created
 
 client = TestClient(app)
 
@@ -170,3 +172,18 @@ def test_update_client_no_change():
 def test_metrics_route():
     response = client.get("/metrics")
     assert response.status_code == 200
+
+# MESSAGING
+
+def test_publish_client_created():
+    mock_channel = MagicMock()
+    with patch("app.messaging.rabbitmq.channel", mock_channel):
+        client_data = {"name": "Test", "email": "test@example.com"}
+        publish_client_created(client_data)
+
+        mock_channel.basic_publish.assert_called_once()
+        args, kwargs = mock_channel.basic_publish.call_args
+        assert kwargs["routing_key"] == "client_created"
+        assert kwargs["body"] == '{"name": "Test", "email": "test@example.com"}'
+        assert kwargs["exchange"] == ""
+        assert kwargs["properties"].delivery_mode == 2
