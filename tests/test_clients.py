@@ -11,7 +11,7 @@ from app.security.auth import create_access_token
 from app.services.client_service import (
     create_client, get_client, list_clients, update_client, delete_client
 )
-from app.messaging.rabbitmq import publish_client_created
+from app.messaging.rabbitmq import publish_client_created, consume_client_created
 
 client = TestClient(app)
 
@@ -188,4 +188,14 @@ def test_publish_client_created():
     assert kwargs["exchange"] == ""
     assert kwargs["properties"].delivery_mode == 2
     mock_channel.close.assert_called_once()
+
+def test_consume_client_created():
+    mock_callback = MagicMock()
+    mock_channel = MagicMock()
+
+    with patch("app.messaging.rabbitmq.get_channel", return_value=mock_channel):
+        consume_client_created(mock_callback)
+
+        mock_channel.basic_consume.assert_called_once()
+        mock_channel.start_consuming.assert_called_once()
 
