@@ -37,4 +37,3 @@ def delete(client_id: str, user=Depends(role_required("admin"))):
     success = delete_client(client_id)
     if not success:
         raise HTTPException(status_code=404, detail="Client non trouvé")
-    return
