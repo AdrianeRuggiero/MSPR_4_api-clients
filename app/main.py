@@ -1,3 +1,5 @@
+"""Point d'entrée principal de l'API Clients avec monitoring Prometheus."""
+
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 from app.routes import clients
@@ -11,9 +13,9 @@ app = FastAPI(
 # Monitoring Prometheus
 Instrumentator().instrument(app).expose(app)
 
-# Route racine
 @app.get("/")
 def root():
+    """Affiche un message de bienvenue."""
     return {"msg": "Bienvenue sur l'API Clients"}
 
 # Inclusions des routes clients
