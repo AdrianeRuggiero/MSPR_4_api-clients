@@ -45,7 +45,7 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       with:
         args: >
-          -Dsonar.projectKey=api-clients
+          -Dsonar.projectKey=AdrianeRuggiero_MSPR_4_api-clients
           -Dsonar.organization=adrianeruggiero
           -Dsonar.sources=app
           -Dsonar.tests=tests
