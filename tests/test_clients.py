@@ -177,13 +177,15 @@ def test_metrics_route():
 
 def test_publish_client_created():
     mock_channel = MagicMock()
-    with patch("app.messaging.rabbitmq.channel", mock_channel):
-        client_data = {"name": "Test", "email": "test@example.com"}
-        publish_client_created(client_data)
+    client_data = {"name": "Test", "email": "test@example.com"}
 
-        mock_channel.basic_publish.assert_called_once()
-        args, kwargs = mock_channel.basic_publish.call_args
-        assert kwargs["routing_key"] == "client_created"
-        assert kwargs["body"] == '{"name": "Test", "email": "test@example.com"}'
-        assert kwargs["exchange"] == ""
-        assert kwargs["properties"].delivery_mode == 2
+    publish_client_created(client_data, channel=mock_channel)
+
+    mock_channel.basic_publish.assert_called_once()
+    args, kwargs = mock_channel.basic_publish.call_args
+    assert kwargs["routing_key"] == "client_created"
+    assert kwargs["body"] == '{"name": "Test", "email": "test@example.com"}'
+    assert kwargs["exchange"] == ""
+    assert kwargs["properties"].delivery_mode == 2
+    mock_channel.close.assert_called_once()
+

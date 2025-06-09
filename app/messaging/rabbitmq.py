@@ -10,8 +10,9 @@ def get_channel():
     return channel
 
 # Fonction pour publier un message
-def publish_client_created(client_data: dict):
-    channel = get_channel()
+def publish_client_created(client_data: dict, channel=None):
+    if channel is None:
+        channel = get_channel()
     channel.basic_publish(
         exchange='',
         routing_key='client_created',
