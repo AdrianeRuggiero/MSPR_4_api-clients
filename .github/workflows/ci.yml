@@ -9,6 +9,9 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      MONGO_URI: ${{ secrets.MONGO_URI }}
+
 
     steps:
     - name: Checkout code
@@ -35,15 +38,15 @@ jobs:
       env:
         PYTHONPATH: .
 
-    - name: Run SonarQube analysis
+    - name: Run SonarCloud analysis
       uses: SonarSource/sonarcloud-github-action@master
       with:
         args: >
           -Dsonar.projectKey=api-clients
+          -Dsonar.organization=adrianeruggiero  # ⚠️ même valeur que dans le fichier properties
           -Dsonar.sources=app
           -Dsonar.tests=tests
           -Dsonar.python.coverage.reportPaths=coverage.xml
           -Dsonar.language=py
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_HOST_URL: http://localhost:9000
