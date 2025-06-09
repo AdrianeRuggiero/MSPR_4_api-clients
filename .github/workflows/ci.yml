@@ -12,10 +12,11 @@ jobs:
     env:
       MONGO_URI: ${{ secrets.MONGO_URI }}
 
-
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Important pour Sonar
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -38,15 +39,15 @@ jobs:
       env:
         PYTHONPATH: .
 
-    - name: Run SonarCloud analysis
-      uses: SonarSource/sonarcloud-github-action@master
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@v5
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       with:
         args: >
-          -Dsonar.projectKey=api-clients
-          -Dsonar.organization=adrianeruggiero  # ⚠️ même valeur que dans le fichier properties
+          -Dsonar.projectKey=AdrianeRuggiero_MSPR_4_api-clients
+          -Dsonar.organization=adrianeruggiero
           -Dsonar.sources=app
           -Dsonar.tests=tests
           -Dsonar.python.coverage.reportPaths=coverage.xml
           -Dsonar.language=py
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
