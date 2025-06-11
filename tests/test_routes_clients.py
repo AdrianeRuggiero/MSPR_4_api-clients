@@ -73,7 +73,7 @@ def test_get_single_client(mock_created):
 
 @patch("app.routes.clients.publish_client_updated")
 @patch("app.routes.clients.publish_client_created")
-def test_update_client_no_change(mock_created):
+def test_update_client_no_change(mock_updated, mock_created):
     payload = {"name": "SameName", "email": "same@example.com"}
     create_resp = client.post("/clients/", json=payload, headers=get_auth_headers())
     client_id = create_resp.json()["_id"]
