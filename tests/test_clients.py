@@ -12,7 +12,9 @@ from app.security.auth import create_access_token
 from app.services.client_service import (
     create_client, get_client, list_clients, update_client, delete_client
 )
-from app.messaging.rabbitmq import publish_client_created, consume_client_created
+from app.messaging.rabbitmq import (
+    publish_client_created,publish_client_updated,publish_client_deleted, consume_client_created
+)
 
 client = TestClient(app)
 
