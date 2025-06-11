@@ -251,8 +251,17 @@ def test_get_channel_creates_connection():
         channel = get_channel()
 
         mock_conn.assert_called_once()
-        mock_channel.queue_declare.assert_called_once_with(queue='client_created', durable=True)
+        
+        expected_calls = [
+            {"queue": "client_created", "durable": True},
+            {"queue": "client_updated", "durable": True},
+            {"queue": "client_deleted", "durable": True},
+        ]
+        actual_calls = [call.kwargs for call in mock_channel.queue_declare.call_args_list]
+
+        assert actual_calls == expected_calls
         assert channel == mock_channel
+
 
 def test_consume_client_created_callback_wrapper():
     from app.messaging.rabbitmq import consume_client_created
