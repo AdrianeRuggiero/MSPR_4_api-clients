@@ -71,6 +71,7 @@ def test_get_single_client(mock_created):
     get_resp = client.get(f"/clients/{client_id}", headers=get_auth_headers())
     assert get_resp.status_code == 200
 
+@patch("app.routes.clients.publish_client_updated")
 @patch("app.routes.clients.publish_client_created")
 def test_update_client_no_change(mock_created):
     payload = {"name": "SameName", "email": "same@example.com"}
