@@ -287,3 +287,32 @@ def test_consume_client_created_callback_wrapper():
         mock_callback.assert_called_once_with({"name": "Test"})
         mock_channel.basic_ack.assert_called_once_with(delivery_tag="xyz")
 
+def test_publish_client_updated():
+    mock_channel = MagicMock()
+    client_data = {"name": "Updated", "email": "updated@example.com"}
+
+    publish_client_updated(client_data, channel=mock_channel)
+
+    mock_channel.basic_publish.assert_called_once()
+    args, kwargs = mock_channel.basic_publish.call_args
+    assert kwargs["routing_key"] == "client_updated"
+    assert kwargs["body"] == json.dumps(client_data)
+    assert kwargs["exchange"] == ""
+    assert kwargs["properties"].delivery_mode == 2
+    mock_channel.close.assert_called_once()
+
+def test_publish_client_deleted():
+    mock_channel = MagicMock()
+    client_id = "abc123"
+
+    publish_client_deleted(client_id, channel=mock_channel)
+
+    mock_channel.basic_publish.assert_called_once()
+    args, kwargs = mock_channel.basic_publish.call_args
+    assert kwargs["routing_key"] == "client_deleted"
+    assert kwargs["body"] == json.dumps({"_id": client_id})
+    assert kwargs["exchange"] == ""
+    assert kwargs["properties"].delivery_mode == 2
+    mock_channel.close.assert_called_once()
+
+
