@@ -2,6 +2,9 @@ import json
 import pika
 import logging
 from app.config import settings
+from app.messaging.schemas import (
+    ClientCreatedMessage, ClientUpdatedMessage, ClientDeletedMessage,
+)
 
 # Configuration du logger
 logging.basicConfig(level=logging.INFO)
@@ -19,39 +22,42 @@ def get_channel():
 
 # Publier un client créé
 def publish_client_created(client_data: dict, channel=None):
+    validated = ClientCreatedMessage(**client_data)
     if channel is None:
         channel = get_channel()
-    logger.info(f"[RabbitMQ] Publication dans 'client_created' : {client_data}")
+    logger.info(f"[RabbitMQ] Publication dans 'client_created' : {validated.dict()}")
     channel.basic_publish(
         exchange='',
         routing_key='client_created',
-        body=json.dumps(client_data),
+        body=validated.model_dump_json(),
         properties=pika.BasicProperties(delivery_mode=2)
     )
     channel.close()
 
 # Publier un client mis à jour
 def publish_client_updated(client_data: dict, channel=None):
+    validated = ClientUpdatedMessage(**client_data)
     if channel is None:
         channel = get_channel()
-    logger.info(f"[RabbitMQ] Publication dans 'client_updated' : {client_data}")
+    logger.info(f"[RabbitMQ] Publication dans 'client_updated' : {validated.dict()}")
     channel.basic_publish(
         exchange='',
         routing_key='client_updated',
-        body=json.dumps(client_data),
+        body=validated.model_dump_json(),
         properties=pika.BasicProperties(delivery_mode=2)
     )
     channel.close()
 
 # Publier un client supprimé
 def publish_client_deleted(client_id: str, channel=None):
+    validated = ClientDeletedMessage(_id=client_id)
     if channel is None:
         channel = get_channel()
-    logger.info(f"[RabbitMQ] Publication dans 'client_deleted' : {{'_id': '{client_id}'}}")
+    logger.info(f"[RabbitMQ] Publication dans 'client_deleted' : {validated.dict()}")
     channel.basic_publish(
         exchange='',
         routing_key='client_deleted',
-        body=json.dumps({"_id": client_id}),
+        body=validated.model_dump_json(),
         properties=pika.BasicProperties(delivery_mode=2)
     )
     channel.close()

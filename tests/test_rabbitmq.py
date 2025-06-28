@@ -4,10 +4,18 @@ from app.messaging.rabbitmq import (
     publish_client_created,
     consume_client_created
 )
+from app.messaging.schemas import ClientCreatedMessage
+import pytest
 
 def test_publish_client_created():
     mock_channel = MagicMock()
-    data = {"name": "Test", "email": "test@example.com"}
+    data = {
+        "name": "Test",
+        "email": "test@example.com",
+        "company": "TestCorp",
+        "phone": "+33123456789",
+        "is_active": True
+    }
     publish_client_created(data, channel=mock_channel)
 
     mock_channel.basic_publish.assert_called_once()
@@ -36,7 +44,15 @@ def test_publish_client_updated(mock_get_channel):
     mock_get_channel.return_value = mock_channel
 
     from app.messaging.rabbitmq import publish_client_updated
-    publish_client_updated({"email": "update@example.com"})
+    data = {
+        "_id": "abc123",
+        "name": "Updated",
+        "email": "update@example.com",
+        "company": "NewCorp",
+        "phone": "+33111111111",
+        "is_active": False
+    }
+    publish_client_updated(data)
 
     mock_channel.basic_publish.assert_called_once()
     mock_channel.close.assert_called_once()
@@ -64,3 +80,17 @@ def test_get_channel(mock_connection):
     mock_channel.queue_declare.assert_any_call(queue="client_updated", durable=True)
     mock_channel.queue_declare.assert_any_call(queue="client_deleted", durable=True)
 
+def test_client_created_message_valid():
+    data = {
+        "name": "Alice",
+        "email": "alice@example.com",
+        "company": "CoolCorp",
+        "phone": "+33612345678",
+        "is_active": True
+    }
+    msg = ClientCreatedMessage(**data)
+    assert msg.email == "alice@example.com"
+
+def test_client_created_message_invalid_email():
+    with pytest.raises(ValueError):
+        ClientCreatedMessage(name="X", email="bademail", is_active=True)
