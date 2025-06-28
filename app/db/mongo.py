@@ -6,3 +6,4 @@ db = client[settings.DATABASE_NAME]
 
 # Exemple d'accès à une collection "clients"
 clients_collection = db["clients"]
+ 
